@@ -1,4 +1,4 @@
-# Istio
+# Cheeky Monkey
 _Romo Valadez Jonathan Joshua_
 
 _Computación tolerante a fallas_
@@ -12,173 +12,33 @@ _Departamento de ciencias computacionales_
 ---
 
 ## Introducción
-Hay ocasiones en el que necesitamos muchas versiones de una aplicación en funcionamiento, ya sea para hacer tests o porque hay herramientas que no se deben de tener en algunas versiones. Para esto nos sirve Istio, que nos permite subir diferentes versiones de una aplicación a la nube.
-
-Las condiciones para acceder a una versión u otra se pueden personalizar, haciendolo bastante útil para los desarrolladores.
+A veces hace falta caos para probar que algo funcione correctamente, y que, a pesar del caos, puede volver por sí mismo a ejecutarse. Este es el caso de Cheeky Monkey, que nos sirve para probar precisamente eso, se crea caos en los pods y se verifica que aun con todo el caos, el programa puede seguir siendo accesible.
 
 ---
 
 ## Desarrollo
 
-### ¿Que es Istio?
-Istio es una malla de servicios (es decir, una capa de redes de servicios modernizada) que ofrece una manera transparente e independiente de cualquier lenguaje de automatizar las funciones de red de una aplicación de forma flexible y sencilla. Es una solución muy popular para gestionar los diferentes microservicios que conforman una aplicación nativa de la nube. La malla de servicios de Istio también es compatible con las formas de comunicarse y compartir datos entre ellos que utilizan estos microservicios.
+Se utilizará el programa anterior en su totalidad para probar que sigue funcionando incluso con todo el caos.
 
-### Programa de ejemplo
-Se utilizará el programa de la anterior práctica para realizar esta práctica.
+Lo primero que se deberá de hacer es clonar el repositorio de cheeky monkey, y se deberán de instalar los requisitos de python.
 
-~~~python
-from fastapi import FastAPI
-import requests
+![Instalar requisitos](./Imagenes/1.png "Instalar requisitos")
 
-app = FastAPI()
+Se verificará que contenedores se quieren excluir, ya que por defecto, cheeky monkey intentará destruir cualquier contenedor que encuentre, por lo que se excluirán los más importantes, como istio. Una vez teniendo en cuenta los contenedores que se quieren excluir se puede ejecutar el programa de la siguiente manera.
 
-@app.on_event("startup")
-def startup():
-    print("Bonjour")
+![Ejecutar Cheeky Monkey](./Imagenes/2.png "Ejecutar Cheeky Monkey")
 
+También se pueden configurar algunas cosas de Cheeky Monkey para que se adapte a lo que queremos, como la vida de las cajas, el numero de contenedores que elimina por cada caja, entre otras cosas. Y con todo listo se puede ver el juego, el cual como se puede apreciar, ya eliminó un contenedor.
 
-@app.on_event("shutdown")
-def shutdown():
-    print("Arrive Derchi")
+![Juego](./Imagenes/3.png "Juego")
 
+Se puede verificar cómo se van volviendo a levantar los pods que se destruyeron.
 
-@app.get("/{Nombre}")
-async def root(Nombre: str):
-    lista = []
-    response = requests.get('https://api.publicapis.org/entries')
-    response = response.json()
-    items = response['entries']
-    item_list = list(items)
-    for item in item_list:
-        posicion = item["API"].find(Nombre)
-        if posicion != -1:
-            lista.append(item)
-    return lista
-
-@app.get("/")
-async def root():
-    response = requests.get('https://api.publicapis.org/entries')
-    response = response.json()
-    items = response['entries']
-    item_list = list(items)
-    return item_list
-~~~
-
-Se creará otra imagen de docker para tener 2 versiones diferentes de la aplicación. Se tendrán también 2 yaml, uno para el gateway y otro para el virtual service.
-
-~~~yaml
-apiVersion: networking.istio.io/v1alpha3
-kind: Gateway
-metadata:
-  name: apis-gateway
-spec:
-  selector:
-    app: istio-ingressgateway
-  servers:
-  - port:
-      number: 80
-      name: http
-      protocol: HTTP
-    hosts:
-    - "*"
-~~~
-
-~~~yaml
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  name: apis-service-ingress
-spec:
-  hosts: 
-  - '*'
-  gateways:
-  - apis-gateway
-  http:
-  - match:
-    - uri:
-        prefix: /v1/
-    rewrite:
-        uri: /
-    route:
-    - destination:
-        host: romo-valadez-kubernetes-service
-        port:
-          number: 8000
-  - match:
-    - uri:
-        prefix: /v2/
-    rewrite:
-        uri: /
-    route:
-    - destination:
-        host: romo-valadez-istio-service
-        port: 
-          number: 8000
-~~~
-
-También se creó un pequeño programa en python para poder hacer request a la aplicación y probarla.
-
-~~~python
-import requests
-import time
-
-while True:
-    response1 = requests.get('http://127.0.0.1/v1/')
-    response2 = requests.get('http://127.0.0.1/v2/')
-    time.sleep(1)
-~~~
-
-Una vez descargado Istio y agregado al path, se puede instalar.
-
-![Instalar Istio](./Imagenes/1.png "Instalar Istio")
-
-Se configurará Istio para inyectarlo en los pods que se crean.
-
-![Configurar Istio](./Imagenes/2.png "Configurar Istio")
-
-En este caso se agregará kiali para la visualización.
-
-![Agregar Kiali](./Imagenes/3.png "Agregar Kiali")
-
-Se aplicará todos los yaml necesarios.
-
-![Aplicar yamls](./Imagenes/4.png "Aplicar yamls")
-
-Se podrá ver el gateway de istio para comprobar que esté funcionando.
-
-![Comprobar gateway](./Imagenes/5.png "Aplicar gateway")
-
-En kiali se pueden comprobar las aplicaciones.
-
-![Aplicaciones en kiali](./Imagenes/6.png "Aplicaciones en kiali")
-
-Se podrán comprobar los pods corriendo.
-
-![Pods](./Imagenes/7.png "Pods")
-
-Se deberán de instalar varias cosas para que kiali pueda mostrar gráficos.
-
-![Instalación para kiali](./Imagenes/8.png "Instalación para kiali")
-
-Ahora se podrán ver los gráficos en kiali
-
-![Gráfico sin uso](./Imagenes/9.png "Gráfico sin uso")
-
-Se puede comprobar el uso de la aplicación, en este caso la versión 2, que se puede acceder con el prefijo v2, a la cual se puede acceder a datos con una ruta sin nada más que la versión.
-
-![Datos V2](./Imagenes/10.png "Datos V2")
-
-También se puede comprobar que en la versión 1, accedida por medio del prefijo v1, no existe esta ruta para acceder a todos los datos.
-
-![Datos V1](./Imagenes/11.png "Datos V1")
-
-Ahora se utilizará el programa en python para crear solicitudes, y así poder ver el gráfico cuando las aplicaciones reciben solicitudes.
-
-![Gráfico en uso](./Imagenes/12.png "Gráfico en uso")
+![Verificar pods](./Imagenes/4.png "Verificar pods")
 
 ---
 
 ## Conclusión
-Esta actividad ayudó mucho para aprender una herramienta bastante interesante como istio, que es como una mejora de lo que ofrece kubernetes, pues permite el despliegue de multiples versiones de una aplicación y sus condiciones para poder usar esas versiones.
+Esta actividad ayudó a aprender más sobre la ingeniería del caos, que es bastante útil, ya que con ello se puede probar que una aplicación permanecerá activa, incluso en los momentos más caóticos, y momentos graves como lo es eliminar un pod.
 
-Esto implica aún más tolerancia a fallas, que con solo kubernetes era bastante buena.
+Esto fue muy interesante y se puede aplicar en muchas areas, pues cuando se quiere una aplicación tolerante a fallas completamente, casi siempre se llegan a pruebas enfocadas al caos, pues se toma en cuenta gente que solo quiere eso, ocasionar caos en una aplicación.
